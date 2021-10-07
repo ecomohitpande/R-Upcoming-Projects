@@ -4,7 +4,8 @@ library(ggplot2)
 library(ggrepel)
 library(gridExtra)
 library(tidyr)
-
+library(reshape2)
+library(data.table)
 
 data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
 
@@ -12,19 +13,18 @@ data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
 d1<-data %>% filter(StartDate=="2020") %>% 
   group_by(sector) %>% 
   summarise(toterror=round(mean(TotError),digits = 1), tothist=mean(TotHist))  
-
+view(d1)
 d1<-d1 %>% 
-  rename(tothist_2020 = tothist,toterror_2020 = toterror)
+  rename(toterror_2020 = toterror)
 
 d2<-data %>% filter(StartDate=="2021") %>% 
   group_by(sector) %>% 
   summarise(toterror=round(mean(TotError),digits = 1), tothist=mean(TotHist))  
 
-d2<-d2 %>% rename( tothist_2021 = tothist,toterror_2021 = toterror)
+d2<-d2 %>% rename(toterror_2021 = toterror)
 
-mean<-d1 %>% left_join(d2, by= "sector") 
 #################################################################
-gd1<-ggplot(d1, aes(d1$toterror, d1$tothist)) +
+gd1<-ggplot(d1, aes(d1$toterror_2020, d1$tothist)) +
   #stat_ellipse(geom = "polygon", col = "black", alpha = 0.1) +
   geom_point(shape = 10, col = "black")+theme_bw()+
   geom_text_repel(aes(label=d1$sector), size=4)+
@@ -38,7 +38,7 @@ gd1<-ggplot(d1, aes(d1$toterror, d1$tothist)) +
   stat_ellipse(level = 0.99, color = 5)
 
 
-gd2<-ggplot(d2, aes(d2$toterror, d2$tothist)) +
+gd2<-ggplot(d2, aes(d2$toterror_2021, d2$tothist)) +
   #stat_ellipse(geom = "polygon", col = "black", alpha = 0.1) +
   geom_point(shape = 10, col = "black")+theme_bw()+
   geom_text_repel(aes(label=d2$sector), size=4)+
@@ -52,7 +52,7 @@ gd2<-ggplot(d2, aes(d2$toterror, d2$tothist)) +
   stat_ellipse(level = 0.99, color = 5)
 
 
-grid.arrange(gd1, gd2,nrow = 1)
+grid.arrange(gd1, gd2, compare,nrow = 2)
 
 barg1<-ggplot(d1, aes(x=reorder(sector, d1$toterror), y=d1$toterror)) +
   geom_bar(stat = 'identity',na.rm=TRUE )+theme_linedraw() + 
@@ -71,94 +71,63 @@ barg2<-ggplot(d2, aes(x=reorder(sector, d2$toterror), y=d2$toterror)) +
   xlab("")+
   geom_text(aes(label=toterror, hjust = -.1), vjust=2, color="orange", size=4, width=.8)
 
-grid.arrange(gd1,barg1, gd2, barg2, nrow = 2)
+grid.arrange(gd1,barg1,gd2, barg2, nrow = 2)
+
+###########################################################################################
+
+mean<-d1 %>% left_join(d2, by= "sector") 
+
+dat<-data.frame(d1$sector, d1$toterror_2020, d2$toterror_2021)
+dat<-melt(as.data.table(dat), "d1.sector")
+
+compare<-ggplot(data = dat, aes(x =d1.sector, y = value, group = variable, fill=value)) +
+  geom_bar (stat = "identity", width = 0.5, position = "dodge")+
+  theme_linedraw()+  facet_grid(. ~variable)+coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Year Wise Comparsion Mean FC Error")+
+  xlab("Mean FC Error")
+
+grid.arrange(gd1, gd2,compare, nrow = 1)
 
 #######################################################################################
 #for volatility graph 
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+
 d3<-data %>% filter(StartDate=="2020") %>% 
   group_by(sector) %>% 
-  summarise(tothist=mean(TotHist)/sd(TotHist))  
+  summarise(tothist=round( mean(TotHist)/sd(TotHist), digits = 1))  
 d3<-  d3 %>% drop_na()
 
 d4<-data %>% filter(StartDate=="2021") %>% 
   group_by(sector) %>% 
-  summarise(tothist=mean(TotHist)/sd(TotHist))
+  summarise(tothist=round( mean(TotHist)/sd(TotHist), digits = 1))
 d4<-  d4 %>% drop_na()
 
-gd3<-ggplot(d3, aes(x=reorder(sector, tothist), y=tothist)) +
-  geom_bar(stat = 'identity')+theme_linedraw() + 
-  coord_flip()+
-  ggtitle("B1210A Sectoral Level Cluster, 2020")+
-  ylab("Actaul Dermand, Mean Value")+
-  xlab("JDA FC Error, Mean Value")
+d3<-d3%>% 
+  rename(Actual_FC_2020 = tothist)
 
-gd4<-ggplot(d4, aes(x=reorder(sector, tothist), y=tothist)) +
-  geom_bar(stat='identity')+theme_linedraw() + 
-  coord_flip()+
-  ggtitle("B1210A Sectoral Level Cluster, 2020")+
-  ylab("Actaul Dermand, Mean Value")+
-  xlab("JDA FC Error, Mean Value")
+d4<-d4%>% 
+  rename(Actual_FC_2021 = tothist)
+
+dat<-data.frame(d3$sector, d3$Actual_FC_2020, d4$Actual_FC_2021)
+dat<-melt(as.data.table(dat), "d3.sector")
+
+ggplot(dat, aes(fill=variable, y=value, x=d3.sector)) + 
+  geom_bar (stat = "identity", width = 0.5, position = "stack")+
+  theme_linedraw()+  facet_grid(. ~variable)+coord_flip()+ coord_polar()+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Actual FC Year Wise Variablity, B1210A ")+
+  xlab("Coefficient Variation ")+
+  geom_text(aes(label=value, hjust = -.1), vjust=2, color="black", size=4, width=.8)
+
+
+ggplot(dat, aes(fill=variable, y=value, x=d3.sector)) + 
+  geom_bar(position="stack", stat="identity")+coord_flip()+coord_polar()+
+   theme(axis.text.x = element_text(angle = 90))+
+  theme_linedraw()+
+  ggtitle("Actual FC Year Wise Variablity, B1210A ")+
+  xlab("Coefficient Variation ")
+
 
 
 ######################################################################################
-
-d1<- d1[ , -which(names(d1) %in% c("basefcst","basehist", "totfcst"))]
-
-
-pc<-prcomp(data[-1], center = TRUE, scale. = TRUE)
-summary(pc)
-attributes(pc)
-print(pc)
-var1<-round(pc$sdev[1]^2/sum(pc$sdev^2)*100,2)
-var2<-round(pc$sdev[2]^2/sum(pc$sdev^2)*100,2)
-plot(pc)
-screeplot(x=pc, type= "line", main = "scree plot")
-
-install.packages("ggfortify")
-library("factoextra")
-fviz_eig(pc)
-biplot(pc, cex=0.5)
-
-####usinfg auto plot
-library("ggfortify")
-autoplot(pc)
-d1$toterror<-factor(d1$toterror)
-d1$tothist<-factor(d1$tothist)
-autoplot(pc, data = d1, colour="U_MKTSECTOR", label=TRUE, label.size=3)
-
-autoplot(pc, data = d1,  
-         loadings=TRUE, loadings.colour="blue",
-         loadings.label=TRUE,
-         loading.label.size=.03)
-pc$x
-write.csv(d11,"d.csv")
-fviz_pca_ind(pc,
-             col.ind="cos2",
-             gradient.cols=c("#00AFBB","#E7B800","#FC4E07" ),
-             labelsize = .5,
-             #habillage = d1,
-             repel = TRUE)
-
-fviz_pca_var(pc,
-             col.var="contrib",
-             gradient.cols=c("#00AFBB","#E7B800","#FC4E07" ),
-             repel = TRUE)
-
-fviz_pca_biplot(pc,
-                col.var = "#2E9FDF",
-                col.ind = "#696969",
-                repel = TRUE)
-fviz_pca_ind(pc,
-             #col.ind = pc,
-             #palette = c("red", "blue"),
-             #addEllipses = TRUE,
-             #legend.title="am",
-             xlab=paste("PC1(",var1, "%)", sep = ""),
-             ylab=paste("PC2(",var2,"%)", sep = ""),
-             repel= TRUE)
-
-d11 <- cbind(data, pc$x)      
-ggplot(d11, aes(d11$PC1, d11$PC2)) +
-  #stat_ellipse(geom = "polygon", col = "black", alpha = 0.5) +
-  geom_point(shape = 21, col = "black")+theme_bw()+
-  geom_text_repel(aes(label=d11$Sector), size=3)
