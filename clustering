@@ -13,7 +13,7 @@ data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
 d1<-data %>% filter(StartDate=="2020") %>% 
   group_by(sector) %>% 
   summarise(toterror=round(mean(TotError),digits = 1), tothist=mean(TotHist))  
-view(d1)
+
 d1<-d1 %>% 
   rename(toterror_2020 = toterror)
 
@@ -23,6 +23,7 @@ d2<-data %>% filter(StartDate=="2021") %>%
 
 d2<-d2 %>% rename(toterror_2021 = toterror)
 
+View(d2)
 #################################################################
 gd1<-ggplot(d1, aes(d1$toterror_2020, d1$tothist)) +
   #stat_ellipse(geom = "polygon", col = "black", alpha = 0.1) +
@@ -34,7 +35,6 @@ gd1<-ggplot(d1, aes(d1$toterror_2020, d1$tothist)) +
   stat_ellipse(level = 0.1, color=3) +
   stat_ellipse(level = 0.60, color = 1) +
   stat_ellipse(level = 0.80, color = 4)+
-  stat_ellipse(level = 0.90, color = 2)+
   stat_ellipse(level = 0.99, color = 5)
 
 
@@ -48,46 +48,28 @@ gd2<-ggplot(d2, aes(d2$toterror_2021, d2$tothist)) +
   stat_ellipse(level = 0.1, color=3) +
   stat_ellipse(level = 0.60, color = 1) +
   stat_ellipse(level = 0.80, color = 4)+
-  stat_ellipse(level = 0.90, color = 2)+
   stat_ellipse(level = 0.99, color = 5)
 
 
-grid.arrange(gd1, gd2, compare,nrow = 2)
-
-barg1<-ggplot(d1, aes(x=reorder(sector, d1$toterror), y=d1$toterror)) +
-  geom_bar(stat = 'identity',na.rm=TRUE )+theme_linedraw() + 
-  coord_flip()+
-  ggtitle("B1210A Sectoral Level Offenders, 2020")+
-  ylab("Mean FC Error")+
-  xlab("")+
-  geom_text(aes(label=toterror, hjust = -.1), vjust=2, color="orange", size=4, width=.8)
-
-
-barg2<-ggplot(d2, aes(x=reorder(sector, d2$toterror), y=d2$toterror)) +
-  geom_bar(stat = 'identity',na.rm=TRUE )+theme_linedraw() + 
-  coord_flip()+
-  ggtitle("B1210A Sectoral Level Offenders, 2021")+
-  ylab("Mean FC Error")+
-  xlab("")+
-  geom_text(aes(label=toterror, hjust = -.1), vjust=2, color="orange", size=4, width=.8)
-
-grid.arrange(gd1,barg1,gd2, barg2, nrow = 2)
+grid.arrange(gd1, gd2,nrow = 2)
 
 ###########################################################################################
 
 mean<-d1 %>% left_join(d2, by= "sector") 
 
-dat<-data.frame(d1$sector, d1$toterror_2020, d2$toterror_2021)
-dat<-melt(as.data.table(dat), "d1.sector")
+dat<-data.frame(mean$sector, mean$toterror_2020, mean$toterror_2021)
+dat<-melt(as.data.table(dat), "mean.sector")
 
-compare<-ggplot(data = dat, aes(x =d1.sector, y = value, group = variable, fill=value)) +
-  geom_bar (stat = "identity", width = 0.5, position = "dodge")+
-  theme_linedraw()+  facet_grid(. ~variable)+coord_flip()+
+Yearly_FC_Error <-ggplot(dat, aes(fill=variable, y=value, x=mean.sector)) + 
+  geom_bar(position="stack", stat="identity")+coord_flip()+
   theme(axis.text.x = element_text(angle = 90))+
-  ggtitle("Year Wise Comparsion Mean FC Error")+
-  xlab("Mean FC Error")
+  theme_linedraw()+
+  ggtitle("Yearly FC Error, B1210A ")+
+  xlab("Sectoral Break Up")+
+  ylab("Mean Error")+
+  theme(legend.position = "bottom")
 
-grid.arrange(gd1, gd2,compare, nrow = 1)
+Yearly_FC_Error
 
 #######################################################################################
 #for volatility graph 
@@ -109,25 +91,22 @@ d3<-d3%>%
 d4<-d4%>% 
   rename(Actual_FC_2021 = tothist)
 
-dat<-data.frame(d3$sector, d3$Actual_FC_2020, d4$Actual_FC_2021)
-dat<-melt(as.data.table(dat), "d3.sector")
+meanv<-d3 %>% left_join(d4, by= "sector")
 
-ggplot(dat, aes(fill=variable, y=value, x=d3.sector)) + 
-  geom_bar (stat = "identity", width = 0.5, position = "stack")+
-  theme_linedraw()+  facet_grid(. ~variable)+coord_flip()+ coord_polar()+
-  theme(axis.text.x = element_text(angle = 90))+
-  ggtitle("Actual FC Year Wise Variablity, B1210A ")+
-  xlab("Coefficient Variation ")+
-  geom_text(aes(label=value, hjust = -.1), vjust=2, color="black", size=4, width=.8)
+datv<-data.frame(meanv$sector,meanv$Actual_FC_2020, meanv$Actual_FC_2021)
+datv<-melt(as.data.table(datv), "meanv.sector")
 
+myAng <- seq(-20, -340, length.out = 8)
 
-ggplot(dat, aes(fill=variable, y=value, x=d3.sector)) + 
+FC_Variablity<- ggplot(datv, aes(reorder(x=meanv.sector, -value), y=value,fill=variable)) + 
   geom_bar(position="stack", stat="identity")+coord_flip()+coord_polar()+
-   theme(axis.text.x = element_text(angle = 90))+
-  theme_linedraw()+
-  ggtitle("Actual FC Year Wise Variablity, B1210A ")+
-  xlab("Coefficient Variation ")
-
-
+   theme(axis.text.x = element_text(angle = myAng))+
+  theme_bw()+ ggtitle("Yearly Actual FC Variablity, B1210A ")+
+  xlab("Coefficient Variation ")+ ylab("")+
+  theme(legend.position = "bottom")
+ 
+  
+grid.arrange( Yearly_FC_Error,FC_Variablity, nrow = 1)
 
 ######################################################################################
+
