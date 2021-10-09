@@ -100,15 +100,15 @@ myAng <- seq(-20, -340, length.out = 8)
 
 FC_Variablity<- ggplot(datv, aes(reorder(x=meanv.sector, -value), y=value,fill=variable)) + 
   geom_bar(position="stack", stat="identity")+coord_flip()+coord_polar()+
-   theme(axis.text.x = element_text(angle = myAng))+
+  theme(axis.text.x = element_text(angle = myAng))+
   theme_bw()+ ggtitle("Yearly Actual FC Variablity, B1210A ")+
   xlab("Coefficient Variation ")+ ylab("")+
   theme(legend.position = "bottom")
- 
-  
+
+
 grid.arrange( Yearly_FC_Error,FC_Variablity, nrow = 1)
 
-######################################################################################!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+######################################################################################!!!!!!!!!!!!!!
 library(dplyr)
 library(tidyr)
 library(reshape2)
@@ -116,6 +116,7 @@ library(data.table)
 library(lubridate)
 library(ggplot2)
 library(plyr)
+library(zoo)
 
 
 data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
@@ -175,10 +176,35 @@ growth_melt<-melt(as.data.table(d1), "growth2020.sector")
 
 Yearly_growthrate<-ggplot(growth_melt, aes(reorder(x=growth2020.sector, value), y=value, fill=variable))+
     geom_bar(position="dodge", stat="identity", width = .6)+coord_flip()+
-    theme_bw()+ ggtitle("Yearly Sectoral Average Growth Rate, B1210A ")+
+  theme(axis.text.x = element_text(angle = 90))+  
+  theme_bw()+ ggtitle("Yearly Sectoral Average Growth Rate, B1210A ")+
     ylab("In Percent")+ xlab("Sectors")+
-    theme(legend.position = "bottom")
-  
-  
+    theme(legend.position = "bottom")+ 
+  theme(plot.title = element_text(hjust = 0.5))
+##########################################################################################
+
+melt<-melt(as.data.table(data))
+
+grocery<-data %>% filter(sector=="GROCERY FOOD") %>% 
+  group_by(month) 
 
 
+grocery$growth<-ddply(grocery,"sector",transform,
+              Growth=c(NA,exp(diff(log(total)))-1))
+
+grocery$Date <- as.yearmon(paste(grocery$month,grocery$year), "%m %Y")
+
+grocery<-data.frame(grocery$Date, grocery$growth)
+
+
+grocery_growth<-ggplot(grocery, aes(reorder(x=grocery.Date, Growth), y=Growth))+
+  geom_bar(stat="identity", width = .6, position = "Stack", fill="orange")+coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))+
+  theme_linedraw() + ggtitle("Monthly Grocery Food Growth Rate, B1210A ")+
+  ylab("In Percent")+ xlab("Sectors")+
+  theme(legend.position = "bottom")+
+  expand_limits(x=c(0,0.5), y=c(-0.5, 0.5))+
+  theme(plot.title = element_text(hjust = 0.5))
+
+library(gridExtra)  
+grid.arrange(Yearly_growthrate, grocery_growth,nrow = 1)
