@@ -108,5 +108,77 @@ FC_Variablity<- ggplot(datv, aes(reorder(x=meanv.sector, -value), y=value,fill=v
   
 grid.arrange( Yearly_FC_Error,FC_Variablity, nrow = 1)
 
-######################################################################################
+######################################################################################!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+library(dplyr)
+library(tidyr)
+library(reshape2)
+library(data.table)
+library(lubridate)
+library(ggplot2)
+library(plyr)
+
+
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+str(data)
+
+sector_share2020<-data %>% filter(StartDate=="2020") %>% 
+  group_by(sector ) %>%
+   summarize(Act= sum(TotHist), digits = 3)  %>% 
+  mutate(Actual_2020 =Act/sum(Act)) 
+
+sector_share2021<-data %>% filter(StartDate=="2021") %>% 
+  group_by(sector ) %>%
+  summarize(Act= sum(TotHist))  %>% 
+  mutate(Actual_2021 =Act/sum(Act) )
+
+join<- sector_share2020 %>%  left_join(sector_share2021, by="sector")
+join_frame<- data.frame(join$sector, join$Actual_2020, join$Actual_2021)
+sectoral_share<-melt(as.data.table(join_frame), "join.sector") %>%   drop_na(value) 
+
+sectoral_share<-ggplot(sectoral_share [which(sectoral_share$value>0)], aes(reorder(x=join.sector, value), y=value,fill=variable))+
+  geom_bar(stat="identity", width = .8,position=position_dodge())+ 
+  scale_fill_manual(values=c('#299999','#E69F00'))+
+  theme_linedraw()+
+  coord_flip()+theme(legend.position = "bottom")+
+  ggtitle("Sectoral Contribution to Total Demand, B1210A")+ 
+  xlab("Sectors")+ ylab("In Percentage")+scale_y_discrete(expand = c(0,0))+
+  theme(plot.title = element_text(hjust = 0.5))
+#####################################################################################################
+data$FcstDate<-parse_date_time(data$FcstDate, "ymd")
+
+sort<-data %>% filter(StartDate=="2021") %>% 
+  mutate(month = format(FcstDate, "%m"), year = format(FcstDate, "%Y")) %>% 
+  group_by(month, year, sector) %>% 
+  summarise(total = sum(TotHist))
+
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+
+growth<-ddply(data,"sector",transform,
+      Growth=c(NA,exp(diff(log(total)))-1))
+
+growth[growth ==0]<-NA
+
+growth2020 = growth %>% filter(year=="2021") %>% 
+  group_by(sector) %>%
+  summarise(mean_growth= mean(na.omit(Growth)))
+
+
+growth2021 = growth %>% filter(year=="2020") %>% 
+  group_by(sector) %>%
+  summarise(mean_growth= mean(na.omit(Growth)))
+ 
+d1<-data.frame(growth2020$mean_growth, growth2021$mean_growth,growth2020$sector)
+
+
+growth_melt<-melt(as.data.table(d1), "growth2020.sector")
+
+
+Yearly_growthrate<-ggplot(growth_melt, aes(reorder(x=growth2020.sector, value), y=value, fill=variable))+
+    geom_bar(position="dodge", stat="identity", width = .6)+coord_flip()+
+    theme_bw()+ ggtitle("Yearly Sectoral Average Growth Rate, B1210A ")+
+    ylab("In Percent")+ xlab("Sectors")+
+    theme(legend.position = "bottom")
+  
+  
+
 
