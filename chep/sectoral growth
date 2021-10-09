@@ -1,1 +1,183 @@
 
+library(dplyr)
+library(factoextra)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+library(tidyr)
+library(reshape2)
+library(data.table)
+
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+
+
+d1<-data %>% filter(StartDate=="2020") %>% 
+  group_by(sector) %>% 
+  summarise(toterror=round(mean(TotError),digits = 1), tothist=mean(TotHist))  
+
+d1<-d1 %>% 
+  rename(toterror_2020 = toterror)
+
+d2<-data %>% filter(StartDate=="2021") %>% 
+  group_by(sector) %>% 
+  summarise(toterror=round(mean(TotError),digits = 1), tothist=mean(TotHist))  
+
+d2<-d2 %>% rename(toterror_2021 = toterror)
+
+View(d2)
+#################################################################
+gd1<-ggplot(d1, aes(d1$toterror_2020, d1$tothist)) +
+  #stat_ellipse(geom = "polygon", col = "black", alpha = 0.1) +
+  geom_point(shape = 10, col = "black")+theme_bw()+
+  geom_text_repel(aes(label=d1$sector), size=4)+
+  ggtitle("B1210A Sectoral Level Cluster, 2020")+
+  ylab("Actaul Mean Demand")+
+  xlab("JDA Mean FC Error")+
+  stat_ellipse(level = 0.1, color=3) +
+  stat_ellipse(level = 0.60, color = 1) +
+  stat_ellipse(level = 0.80, color = 4)+
+  stat_ellipse(level = 0.99, color = 5)
+
+
+gd2<-ggplot(d2, aes(d2$toterror_2021, d2$tothist)) +
+  #stat_ellipse(geom = "polygon", col = "black", alpha = 0.1) +
+  geom_point(shape = 10, col = "black")+theme_bw()+
+  geom_text_repel(aes(label=d2$sector), size=4)+
+  ggtitle("B1210A Sectoral Level Cluster, 2021")+
+  ylab("Actaul Mean Demand")+
+  xlab("JDA Mean FC Error")+
+  stat_ellipse(level = 0.1, color=3) +
+  stat_ellipse(level = 0.60, color = 1) +
+  stat_ellipse(level = 0.80, color = 4)+
+  stat_ellipse(level = 0.99, color = 5)
+
+
+grid.arrange(gd1, gd2,nrow = 2)
+
+###########################################################################################
+
+mean<-d1 %>% left_join(d2, by= "sector") 
+
+dat<-data.frame(mean$sector, mean$toterror_2020, mean$toterror_2021)
+dat<-melt(as.data.table(dat), "mean.sector")
+
+Yearly_FC_Error <-ggplot(dat, aes(fill=variable, y=value, x=mean.sector)) + 
+  geom_bar(position="stack", stat="identity")+coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))+
+  theme_linedraw()+
+  ggtitle("Yearly FC Error, B1210A ")+
+  xlab("Sectoral Break Up")+
+  ylab("Mean Error")+
+  theme(legend.position = "bottom")
+
+Yearly_FC_Error
+
+#######################################################################################
+#for volatility graph 
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+
+d3<-data %>% filter(StartDate=="2020") %>% 
+  group_by(sector) %>% 
+  summarise(tothist=round( mean(TotHist)/sd(TotHist), digits = 1))  
+d3<-  d3 %>% drop_na()
+
+d4<-data %>% filter(StartDate=="2021") %>% 
+  group_by(sector) %>% 
+  summarise(tothist=round( mean(TotHist)/sd(TotHist), digits = 1))
+d4<-  d4 %>% drop_na()
+
+d3<-d3%>% 
+  rename(Actual_FC_2020 = tothist)
+
+d4<-d4%>% 
+  rename(Actual_FC_2021 = tothist)
+
+meanv<-d3 %>% left_join(d4, by= "sector")
+
+datv<-data.frame(meanv$sector,meanv$Actual_FC_2020, meanv$Actual_FC_2021)
+datv<-melt(as.data.table(datv), "meanv.sector")
+
+myAng <- seq(-20, -340, length.out = 8)
+
+FC_Variablity<- ggplot(datv, aes(reorder(x=meanv.sector, -value), y=value,fill=variable)) + 
+  geom_bar(position="stack", stat="identity")+coord_flip()+coord_polar()+
+   theme(axis.text.x = element_text(angle = myAng))+
+  theme_bw()+ ggtitle("Yearly Actual FC Variablity, B1210A ")+
+  xlab("Coefficient Variation ")+ ylab("")+
+  theme(legend.position = "bottom")
+ 
+  
+grid.arrange( Yearly_FC_Error,FC_Variablity, nrow = 1)
+
+######################################################################################!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+library(dplyr)
+library(tidyr)
+library(reshape2)
+library(data.table)
+library(lubridate)
+library(ggplot2)
+library(plyr)
+
+
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+str(data)
+
+sector_share2020<-data %>% filter(StartDate=="2020") %>% 
+  group_by(sector ) %>%
+   summarize(Act= sum(TotHist), digits = 3)  %>% 
+  mutate(Actual_2020 =Act/sum(Act)) 
+
+sector_share2021<-data %>% filter(StartDate=="2021") %>% 
+  group_by(sector ) %>%
+  summarize(Act= sum(TotHist))  %>% 
+  mutate(Actual_2021 =Act/sum(Act) )
+
+join<- sector_share2020 %>%  left_join(sector_share2021, by="sector")
+join_frame<- data.frame(join$sector, join$Actual_2020, join$Actual_2021)
+sectoral_share<-melt(as.data.table(join_frame), "join.sector") %>%   drop_na(value) 
+
+sectoral_share<-ggplot(sectoral_share [which(sectoral_share$value>0)], aes(reorder(x=join.sector, value), y=value,fill=variable))+
+  geom_bar(stat="identity", width = .8,position=position_dodge())+ 
+  scale_fill_manual(values=c('#299999','#E69F00'))+
+  theme_linedraw()+
+  coord_flip()+theme(legend.position = "bottom")+
+  ggtitle("Sectoral Contribution to Total Demand, B1210A")+ 
+  xlab("Sectors")+ ylab("In Percentage")+scale_y_discrete(expand = c(0,0))+
+  theme(plot.title = element_text(hjust = 0.5))
+#####################################################################################################
+data$FcstDate<-parse_date_time(data$FcstDate, "ymd")
+
+sort<-data %>% filter(StartDate=="2021") %>% 
+  mutate(month = format(FcstDate, "%m"), year = format(FcstDate, "%Y")) %>% 
+  group_by(month, year, sector) %>% 
+  summarise(total = sum(TotHist))
+
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+
+growth<-ddply(data,"sector",transform,
+      Growth=c(NA,exp(diff(log(total)))-1))
+
+growth[growth ==0]<-NA
+
+growth2020 = growth %>% filter(year=="2021") %>% 
+  group_by(sector) %>%
+  summarise(mean_growth= mean(na.omit(Growth)))
+
+
+growth2021 = growth %>% filter(year=="2020") %>% 
+  group_by(sector) %>%
+  summarise(mean_growth= mean(na.omit(Growth)))
+ 
+d1<-data.frame(growth2020$mean_growth, growth2021$mean_growth,growth2020$sector)
+
+
+growth_melt<-melt(as.data.table(d1), "growth2020.sector")
+
+
+Yearly_growthrate<-ggplot(growth_melt, aes(reorder(x=growth2020.sector, value), y=value, fill=variable))+
+    geom_bar(position="dodge", stat="identity", width = .6)+coord_flip()+
+    theme_bw()+ ggtitle("Yearly Sectoral Average Growth Rate, B1210A ")+
+    ylab("In Percent")+ xlab("Sectors")+
+    theme(legend.position = "bottom")
+  
+  
