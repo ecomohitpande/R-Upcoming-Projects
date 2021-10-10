@@ -1,0 +1,58 @@
+library(ggplot2)
+library(dplyr)
+a1 <- read.csv("~/Desktop/a1.csv")
+
+head(a1)
+growth[growth ==0]<-NA
+
+sort20 = a1 %>% filter(StartDate=="2020") %>% 
+  group_by(DmdUnit) %>%
+  summarise(act2020= mean(na.omit(TotHist)/sd(TotHist)))
+
+
+sort21 = a1 %>% filter(StartDate=="2021") %>% 
+  group_by(DmdUnit) %>%
+  summarise(act2021= mean(na.omit(TotHist)/sd(TotHist)))
+
+
+vari<-sort20 %>% left_join(sort21, by= "DmdUnit")
+d1<-data.frame(vari$DmdUnit, vari$act2020, vari$act2021)
+
+unit_melt<-melt(as.data.table(d1), "vari.DmdUnit")
+
+quality<-ggplot(unit_melt [which(unit_melt$value>0)], aes(reorder(x=vari.DmdUnit, value), y=value, fill=variable))+
+  geom_bar(position="stack", stat="identity", width = .6)+coord_flip()+
+  theme(axis.text.x = element_text(angle = 90))+  
+  theme_bw()+ ggtitle("Yearly Quality Level Actaul Variablity, B1210A ")+
+  ylab("In Percent")+ xlab("Quality")+
+  theme(legend.position = "bottom")+ 
+  theme(plot.title = element_text(hjust = 0.5))
+
+########
+
+sort20 = a1 %>% filter(StartDate=="2020") %>% 
+  group_by(U_DEFPLANT) %>%
+  summarise(act2020= mean(na.omit(TotError)/sd(TotError)))
+
+
+sort21 = a1 %>% filter(StartDate=="2021") %>% 
+  group_by(U_DEFPLANT) %>%
+  summarise(act2021= mean(na.omit(TotError)/sd(TotError)))
+
+
+vari<-sort20 %>% left_join(sort21, by= "U_DEFPLANT")
+d1<-data.frame(vari$U_DEFPLANT, vari$act2020, vari$act2021)
+
+unit_melt<-melt(as.data.table(d1), "vari.U_DEFPLANT")
+
+plant<-ggplot(unit_melt, aes(reorder(x=vari.U_DEFPLANT, value), y=value, fill=variable))+
+  geom_bar(position="stack", stat="identity", width = .6)+coord_flip()+coord_polar()+
+  theme(axis.text.x = element_text(angle = 90))+  
+  theme_bw()+ ggtitle("Yearly Plant Level FC Error, B1210A ")+
+  ylab("In Percent")+ xlab("Quality")+
+  theme(legend.position = "bottom")+ 
+  theme(plot.title = element_text(hjust = 0.5))
+
+library(gridExtra)
+
+grid.arrange(quality, plant, nrow=1)
