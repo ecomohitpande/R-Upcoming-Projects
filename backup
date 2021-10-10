@@ -1,0 +1,255 @@
+
+library(forecast)
+library(tseries)
+library(lubridate)
+library(dplyr)
+
+
+head(p0)
+
+str(p0)   #structure
+chepp <- read.csv("C:/Users/pandeym1/Downloads/chep data/chepp.csv")
+p=chepp 
+
+p1=p %>% 
+  group_by(Month) %>%
+  summarize(Sales = sum(Sales))
+
+View(p1)
+chepp$Month <- as.Date(chepp$Month)
+chepp
+
+#last row not data thus removed
+p=p0[-c(115), ] 
+
+#convert to date type otherwise time series won't work.
+p$Month= parse_date_time(p$Month, "ym")
+
+str(p)
+
+#creating a ts class. 1st col to be forcast, 2nd start period, 3rd end date. 4th frequency 12 i.e. monthly data
+pts=ts(p$actual,c(2015,1),c(2021,12),12)
+
+plot(pts,main="Chep")      #plotting the ts
+
+#decomposing data to trends and seasonal
+#12 => data is monthly, s.window=>seasonal, t.window=>trend
+decomp <- stl(pts,s.window = 12,t.window = 12)
+
+plot(decomp)
+
+View(pts)
+
+head(decomp$time.series)    # original data = seasonal+trend+remainder
+
+decomp$time.series  
+
+r <- decomp$time.series[,3]   #putting the resiuals in a new variable
+r
+
+
+#putting the resiuals in a new variable
+adf.test(r)
+#p value=0.01 <0.05. Null rejected
+#H0: not stationary, HA:stationary
+#lag oder=> number of periods went back. lag=4 means went back 4 periods to compare
+
+# concluded data is stationary.
+
+#__________ACF PLOT GIVES MA ORDER_______________________________
+acf(r,main="Acf plot")
+#since spikes lie within blue line, hence not stationary
+# last major significant spike is at 2. thus MA order=2
+
+#___________PACF PLOT GIVES AR ORDER____________________________
+pacf(r,main="Pacf plot")
+#stationary. spikes outside blue line means significant.
+#since spikes significant till 2 in curve thus AR order=2
+
+#_____________________MAKING MODEL____________________________________
+#using p=2,d=0,q=2 for making model
+mod<-arima(p$actual,order=c(2,1,2))
+accuracy(mod)        #check mape. mape<7 => accurate, MAPE= meane average percentage error
+
+#____________________FORCASTING____________________________________________
+fst<-forecast(mod,level=c(95),h=12)
+#forcast like predict. forcast(model to be used, level= certainty, h= number of values predicted )
+fst
+
+write.csv(fst, "fast2.1.2.csv")
+plot(fst,main="Prediction")
+# black curve original. blue dots= prediction
+
+#__________________VALIDATION OF MODEL___________________________________________
+hist(mod$r)        #checking for normal distribution
+qqnorm(mod$r)      #nealy straight means normally distributed 
+
+#LJUMG BOX STATISTICS_______________________________________________
+#H0 no autocorrelation i.e. all Autocorr values are q. thus good fit , HA= yes autocorrelation, values not 0 thus bad fit
+Box.test(mod$r)
+
+install.packages("tensorflow", version= "nightly")
+
+
+
+install.packages("shiny")
+library(shiny)
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+  
+  # Application title
+  titlePanel("Linear Regression"),
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("Income",
+                  "Select Income:",
+                  min = 40,
+                  max = 250,
+                  value = 45)
+    ),
+    
+    # Show a plot of the generated distribution
+    mainPanel(
+      tableOutput("distPlot")
+    )
+  )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+  
+  output$distPlot <- renderTable({
+    CustCsv <- read.csv("c:\\R\\Customer_Age_Income.csv");
+    Income_DF <- data.frame(Inc = CustCsv$Income[1:6], Spend = CustCsv$SalesAmt[1:6]);
+    Income_DF
+    
+    Model_lm <- lm(Spend ~ Inc, data=Income_DF)
+    NewInc <- data.frame(Inc=input$Income)
+    NewInc
+    Spend_Value <- predict(Model_lm,NewInc)
+    Spend_Value})}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+library(dplyr)
+
+chepp <- read.csv("C:/Users/pandeym1/Downloads/chep data/chepp.csv")
+
+chepp$Month <- as.Date(chepp$Month)
+
+data<-aggregate(chep$Qty, by=list(chep$Date), sum)
+
+View(data)
+
+write.csv(data, "issue.csv")
+
+a<-get_date(week = 37:53, year = 2020)
+b<-get_date(week = 1:35, year = 2021)
+b
+######################
+library(prophet)
+
+
+chepp <- read.csv("C:/Users/pandeym1/Downloads/chep data/chepp.csv")
+p=chepp 
+p$Month= parse_date_time(p$Month, "ym")
+ds<- p$Month
+y<- p$actual
+df<-data.frame(ds,y)
+
+m<- prophet(df)
+
+future <- make_future_dataframe(m, periods = 12, freq = 'month')
+fcst <- predict(m, future)
+plot(m, fcst)
+
+fcst
+
+
+write.csv(fcst, "fs21.csv")
+#############
+data1 <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/data1.csv")
+data2 <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/data2.csv")
+
+
+library(dplyr)
+
+n<-data1 %>% left_join(data2, by= "Loc") 
+n1<-n[!duplicated(n), ]  
+View(n1)
+
+write.csv(n1,"merge.csv")
+
+data <- read.csv("C:/Users/pandeym1/Downloads/chep data/customer level/a1.csv")
+
+d1<-data %>% filter(X.StartDate=="2020") %>% 
+  group_by(DmdUnit, Loc, U_MKTSECTOR) %>% 
+  summarise(basefcst=mean(BaseFcst), basehist=mean(BaseHist), 
+            toterror=mean(TotError), tothist=mean(TotHist),
+            totfcst=mean(TotFcst))  
+View(d1)
+
+d2<-data %>% filter(X.StartDate=="2021") %>% 
+  group_by(DmdUnit, Loc, U_MKTSECTOR) %>% 
+  summarise(basefcst=mean(BaseFcst), basehist=mean(BaseHist), 
+            toterror=mean(TotError), tothist=mean(TotHist),
+            totfcst=mean(TotFcst))  
+
+View(d2)
+
+data$U_MKTSECTOR = as.numeric(as.factor(data$U_MKTSECTOR))
+# Scatter plot 
+plot(mydata$TotError~ mydata$TotHist, data = mydata)
+with(mydata,text(mydata$TotError ~ mydata$TotHist, labels=mydata$U_MKTSECTOR,pos=4))
+
+# Normalize 
+z <- mydata[,-c(1,1)]
+means <- apply(z,2,mean)
+sds <- apply(z,2,sd)
+nor <- scale(z,center=means,scale=sds)
+
+# Calculate distance matrix  
+distance = dist(nor)
+
+# Hierarchical agglomerative clustering  
+mydata.hclust = hclust(distance)
+plot(mydata.hclust)
+plot(mydata.hclust,labels=mydata$DmdUnit,main='Default from hclust')
+plot(mydata.hclust,hang=-1)
+
+# Hierarchical agglomerative clustering using "average" linkage 
+mydata.hclust<-hclust(distance,method="average")
+plot(mydata.hclust,hang=-1)
+
+# Cluster membership
+member = cutree(mydata.hclust,3)
+table(member)
+
+# Characterizing clusters 
+aggregate(nor,list(member),mean)
+aggregate(mydata[,-c(1,1)],list(member),mean)
+
+# Silhouette Plot
+library(cluster) 
+plot(silhouette(cutree(mydata.hclust,4), distance)) 
+
+# Scree Plot
+wss <- (nrow(nor)-1)*sum(apply(nor,2,var))
+for (i in 2:20) wss[i] <- sum(kmeans(nor, centers=i)$withinss)
+plot(1:20, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares") 
+
+# K-means clustering
+set.seed(123)
+kc<-kmeans(nor,3)
+
+clusplot(mydata, kc$cluster,
+         color = T, shade = T,
+         labels = 3,
+         lines = 0)
+
+
+###########
