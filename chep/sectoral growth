@@ -136,7 +136,7 @@ join<- sector_share2020 %>%  left_join(sector_share2021, by="sector")
 join_frame<- data.frame(join$sector, join$Actual_2020, join$Actual_2021)
 sectoral_share<-melt(as.data.table(join_frame), "join.sector") %>%   drop_na(value) 
 
-sectoral_share<-ggplot(sectoral_share [which(sectoral_share$value>0)], aes(reorder(x=join.sector, value), y=value,fill=variable))+
+sectoral_share<-ggplot(sectoral_share [which(sectoral_share$value>0),], aes(reorder(x=join.sector, value), y=value,fill=variable))+
   geom_bar(stat="identity", width = .8,position=position_dodge())+ 
   scale_fill_manual(values=c('#299999','#E69F00'))+
   theme_linedraw()+
