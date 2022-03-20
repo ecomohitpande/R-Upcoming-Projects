@@ -1,0 +1,190 @@
+Skip to content
+Search or jump to…
+Pull requests
+Issues
+Marketplace
+Explore
+ 
+@ecomohitpande 
+ecomohitpande
+/
+Prophet-Shiny-App-R
+Public
+Code
+Issues
+Pull requests
+Actions
+Projects
+Wiki
+Security
+Insights
+Settings
+Prophet-Shiny-App-R
+/
+regression app
+in
+main
+ 
+
+Spaces
+
+2
+
+No wrap
+17
+summary(lmcore)
+18
+​
+19
+summary(lmcore1)
+20
+​
+21
+library(shiny)
+22
+​
+23
+​
+24
+library(shiny)
+25
+ui<-shinyUI(fluidPage(
+26
+  titlePanel('Violent Crime Rates vs Urban Population in the US'),
+27
+  sidebarLayout(
+28
+    sidebarPanel(
+29
+      selectInput('ycol', 'Select a type of Crime to visualize its relation to percentage of urban population', names(USArrests)[c(1,2,4)],
+30
+                  selected=names(USArrests)[[1]]),
+31
+      h1(""),
+32
+      h5("head of dataset"),      
+33
+      tableOutput('table')      
+34
+    ),
+35
+    mainPanel(
+36
+      h5("The chart shows amount of crimes (in arrests per 100,000 residents) vs the percent of the population living in urban areas in each of the 50 US states in 1973."),
+37
+      h5("Source: 'USArrests' dataset from R."),
+38
+      h5("A linear regression model is calculated for each type of crime and shown below."),
+39
+      plotOutput("plot1"),
+40
+      h4("Slope"),
+41
+      textOutput("pred1slope"),
+42
+      textOutput("pred2slope"),
+43
+      textOutput("pred3slope"),
+44
+      h4("Intercept"),
+45
+      textOutput("pred1intercept"),
+46
+      textOutput("pred2intercept"),
+47
+      textOutput("pred3intercept"),
+48
+      h5("The linear model of crime explained by percent of urban population can be evaluated with the P value"),
+49
+      h4("P Value of Regression Model"),
+50
+      textOutput("pred1p"),
+51
+      textOutput("pred2p"),
+52
+      textOutput("pred3p")
+53
+      
+54
+    )
+55
+  )
+56
+))
+57
+head(USArrests)
+58
+server<-shinyServer(function(input, output) {
+59
+  
+60
+  selectedData <- reactive({
+61
+    USArrests[, c("UrbanPop", input$ycol)]
+62
+  })
+63
+  
+64
+  model1 <- lm(Murder ~ UrbanPop, data = USArrests)
+65
+  model2 <- lm(Assault ~ UrbanPop, data = USArrests)
+66
+  model3 <- lm(Rape ~ UrbanPop, data = USArrests)
+67
+  
+68
+  output$plot1 <- renderPlot({
+69
+    par(mar = c(5.1, 4.1, 0, 1))
+70
+    plot(selectedData())
+71
+    
+72
+    if(input$ycol=='Murder'){abline(model1, col = "blue", lwd = 2)}
+73
+    if(input$ycol=='Assault'){abline(model2, col = "green", lwd = 2)}
+74
+    if(input$ycol=='Rape'){abline(model3, col = "red", lwd = 2)}
+75
+    
+76
+  })
+77
+  
+78
+  output$pred1p <- renderText({if(input$ycol=='Murder'){anova(model1)$'Pr(>F)'[1]}})
+79
+  output$pred2p <- renderText({if(input$ycol=='Assault'){anova(model2)$'Pr(>F)'[1]}})
+80
+  output$pred3p <- renderText({if(input$ycol=='Rape'){anova(model3)$'Pr(>F)'[1]}})
+81
+  
+82
+  output$pred1slope <- renderText({if(input$ycol=='Murder'){model1[[1]][2]}})
+83
+  output$pred2slope <- renderText({if(input$ycol=='Assault'){model2[[1]][2]}})
+84
+  output$pred3slope <- renderText({if(input$ycol=='Rape'){model3[[1]][2]}})
+@ecomohitpande
+Commit changes
+Commit summary
+Create regression app
+Optional extended description
+Add an optional extended description…
+ Commit directly to the main branch.
+ Create a new branch for this commit and start a pull request. Learn more about pull requests.
+ 
+© 2022 GitHub, Inc.
+Terms
+Privacy
+Security
+Status
+Docs
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
